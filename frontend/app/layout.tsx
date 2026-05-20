@@ -4,6 +4,8 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import VoiceChatbot from "@/components/chatbot/VoiceChatbot";
+import Header from "@/components/Header";
+import AnimatePresenceProvider from "@/components/providers/AnimatePresenceProvider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -26,7 +28,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <div className="flex flex-col min-h-screen">
+            <Header />
+            <AnimatePresenceProvider>
+              {children}
+            </AnimatePresenceProvider>
+          </div>
           <VoiceChatbot />
           <Toaster position="bottom-right" />
         </ThemeProvider>

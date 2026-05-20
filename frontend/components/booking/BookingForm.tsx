@@ -51,31 +51,187 @@ export default function BookingForm({
       return
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("user_id", user.id)
-      .single()
+    try {
+      // 1. Fetch Customer Profile
+      const { data: customerProfile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .single()
 
-    if (!profile) {
-      toast.error("Profile not found")
-      setLoading(false)
-      return
-    }
+      const currentCustomerId = customerProfile?.id || user.id
 
-    const { error } = await supabase.from("bookings").insert({
-      customer_id: profile.id,
-      employee_id: employeeId,
-      ...data
-    })
+      // Duplicate prevention: check for existing Pending request
+      const existingBookingsStr = localStorage.getItem("local_bookings")
+      const localBookings = existingBookingsStr ? JSON.parse(existingBookingsStr) : []
+      const duplicateLocal = localBookings.find((b: any) => 
+        b.customerId === currentCustomerId && 
+        b.workerId === employeeId && 
+        b.status === "Pending"
+      )
 
-    setLoading(false)
+      if (duplicateLocal) {
+        toast.error("You already have a pending request for this worker")
+        setLoading(false)
+        return
+      }
 
-    if (error) {
-      toast.error("Booking failed: " + error.message)
-    } else {
-      toast.success("Booking request sent successfully!")
+      try {
+        const { data: duplicateDb } = await supabase
+          .from("bookings")
+          .select("id")
+          .eq("customer_id", currentCustomerId)
+          .eq("employee_id", employeeId)
+          .eq("status", "Pending")
+          .limit(1)
+
+        if (duplicateDb && duplicateDb.length > 0) {
+          toast.error("You already have a pending request for this worker")
+          setLoading(false)
+          return
+        }
+      } catch (err) {
+        console.error("DB check failed", err)
+      }
+
+      const customerName = customerProfile?.full_name || user.user_metadata?.full_name || user.email?.split('@')[0] || "Customer"
+
+      // 2. Fetch Worker Profile to perform AI Matchmaker
+      let workerProfile: any = null
+      
+      // Try database first
+      const { data: dbWorker } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", employeeId)
+        .single()
+      
+      if (dbWorker) {
+        workerProfile = dbWorker
+      } else {
+        // Try localStorage workers
+        const localWorkersStr = localStorage.getItem("workers")
+        if (localWorkersStr) {
+          const workers = JSON.parse(localWorkersStr)
+          workerProfile = workers.find((w: any) => w.id === employeeId)
+        }
+      }
+
+      const workerName = workerProfile?.full_name || workerProfile?.name || "Professional"
+      const category = workerProfile?.job_category || workerProfile?.category || "Specialist"
+      const location = workerProfile?.city || "Mumbai"
+
+      // 3. Compute AI Job Matching Score
+      let matchScore = 95
+      let matchReason = "Worker is local and has matching skill credentials."
+
+      try {
+        const matchRes = await fetch("/api/match-score", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workerSkills: workerProfile?.skills || [category],
+            workerLocation: location,
+            experience: workerProfile?.experience_years ? `${workerProfile.experience_years} years` : workerProfile?.experience || "N/A",
+            rating: workerProfile?.avg_rating || workerProfile?.rating || "4.8",
+            customerRequest: data.job_description
+          })
+        })
+        if (matchRes.ok) {
+          const matchData = await matchRes.json()
+          if (matchData.matchScore !== undefined) {
+            matchScore = matchData.matchScore
+            matchReason = matchData.reason
+          }
+        }
+      } catch (err) {
+        console.error("AI Matchmaker failed, using default values", err)
+      }
+
+      // 4. Save booking
+      const bookingId = crypto.randomUUID()
+      const bookingPayload = {
+        bookingId,
+        customerId: currentCustomerId,
+        customerName,
+        workerId: employeeId,
+        workerName,
+        category,
+        location,
+        date: data.date,
+        time: data.time_slot,
+        status: "Pending",
+        notificationRead: false,
+        createdAt: Date.now(),
+        matchScore,
+        matchReason,
+        address: data.address,
+        job_description: data.job_description
+      }
+
+      // 4.1 Save to database bookings table
+      await supabase.from("bookings").insert({
+        customer_id: currentCustomerId,
+        employee_id: employeeId,
+        job_description: data.job_description,
+        date: data.date,
+        time_slot: data.time_slot,
+        estimated_hours: Number(data.estimated_hours),
+        address: data.address,
+        status: "Pending",
+        match_score: matchScore,
+        match_reason: matchReason
+      })
+
+      // 4.2 Save to localStorage bookings (crucial for mock real-time syncing)
+      localBookings.push(bookingPayload)
+      localStorage.setItem("local_bookings", JSON.stringify(localBookings))
+
+      // 4.3 Save initial notification to customer_notifications in localStorage
+      const existingNotificationsStr = localStorage.getItem("customer_notifications")
+      const localNotifications = existingNotificationsStr ? JSON.parse(existingNotificationsStr) : []
+      const newNotification = {
+        id: crypto.randomUUID(),
+        bookingId,
+        customerId: currentCustomerId,
+        workerName,
+        message: "🔔 Booking request sent successfully",
+        read: false,
+        timestamp: Date.now()
+      }
+      localNotifications.unshift(newNotification)
+      localStorage.setItem("customer_notifications", JSON.stringify(localNotifications))
+
+      // 5. Emit real-time NEW_JOB_REQUEST event via localStorage for local testing
+      localStorage.setItem("latest_event", JSON.stringify({
+        event: "NEW_JOB_REQUEST",
+        booking: bookingPayload,
+        timestamp: Date.now()
+      }))
+
+      // 5.1 Also emit via Supabase realtime broadcast channel
+      try {
+        const channel = supabase.channel("dashboard-sync")
+        channel.subscribe((status: string) => {
+          if (status === "SUBSCRIBED") {
+            channel.send({
+              type: "broadcast",
+              event: "NEW_JOB_REQUEST",
+              payload: bookingPayload
+            })
+          }
+        })
+      } catch (e) {
+        console.error("Supabase channel broadcast error:", e)
+      }
+
+      toast.success("Booking request sent successfully! AI Match Score: " + matchScore + "%")
       if (onSuccess) onSuccess()
+
+    } catch (error: any) {
+      toast.error("Failed to book professional: " + error.message)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -113,7 +269,7 @@ export default function BookingForm({
       </div>
 
       <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? "Submitting..." : "Request Booking"}
+        {loading ? "Sending booking request..." : "Request Booking"}
       </Button>
     </form>
   )

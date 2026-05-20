@@ -30,25 +30,53 @@ export default function LoginPage() {
       setLoading(false)
       return
     }
-
-    // Check if the user's role matches their selected role in the tab, or just redirect based on actual role
-    const { data: profile } = await supabase
+    // Fetch profile and store in local caches
+    const { data: profile, error: profileErr } = await supabase
       .from("profiles")
-      .select("role")
+      .select("*")
       .eq("user_id", data.user.id)
       .single()
 
     setLoading(false)
 
-    if (profile) {
-      if (profile.role === "worker") {
-        router.push("/employee/dashboard")
-      } else {
-        router.push("/customer/dashboard")
-      }
-    } else {
-      // No profile found, shouldn't happen if registered properly
+    if (profileErr || !profile) {
       toast.error("Profile not found")
+      return
+    }
+
+    // Save userData to localStorage
+    const userData = {
+      userId: data.user.id,
+      fullName: profile.full_name || "",
+      email: data.user.email || email || "",
+      phone: profile.phone || "",
+      city: profile.city || "",
+      category: profile.job_category || ""
+    }
+    localStorage.setItem("userData", JSON.stringify(userData))
+
+    // Save profileData to localStorage for settings hydration
+    const profileData = {
+      fullName: profile.full_name || "",
+      phone: profile.phone || "",
+      email: data.user.email || email || "",
+      city: profile.city || "",
+      address: profile.address || "",
+      jobCategory: profile.job_category || "",
+      skills: profile.skills || [],
+      experienceYears: profile.experience_years || 0,
+      hourlyRate: profile.hourly_rate || 0,
+      bio: profile.bio || "",
+      availability: profile.availability ?? true,
+      workingHours: profile.working_hours || "9:00 AM - 6:00 PM",
+      availableDays: profile.available_days || ["Mon", "Tue", "Wed", "Thu", "Fri"],
+      avatarUrl: profile.avatar_url || null
+    }
+    localStorage.setItem("profileData", JSON.stringify(profileData))
+    if (profile.role === "worker") {
+      router.push("/employee/dashboard")
+    } else {
+      router.push("/customer/dashboard")
     }
   }
 

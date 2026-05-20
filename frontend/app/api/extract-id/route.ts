@@ -15,7 +15,7 @@ Return ONLY a raw JSON object with the following structure:
   "rejectionReason": "if isValidId is false, provide a polite reason why the document was rejected (e.g., 'The image appears to be a landscape photo/object, not an identity card.'), otherwise null",
   "name": "extracted full name or null",
   "idNumber": "extracted ID number or null",
-  "dob": "extracted date of birth or null (format as MM-DD-YYYY or what's visible)",
+  "dob": "extracted date of birth or null (format as DD-MM-YYYY or what's visible)",
   "docType": "one of 'Aadhaar', 'PAN', 'Driving License', 'Passport', 'Voter ID' or null",
   "confidenceNote": "a brief assessment of document quality, e.g., 'Good', 'Blurry', 'Possibly edited'"
 }

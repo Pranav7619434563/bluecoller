@@ -74,3 +74,68 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  /* Site-wide Hardware-Accelerated Interactive Transforms */
+
+  /* Buttons Lift & Compress */
+  button:not(:disabled),
+  .button-animate,
+  [role="button"] {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background-color 0.2s ease, border-color 0.2s ease !important;
+    will-change: transform;
+  }
+  button:not(:disabled):hover,
+  .button-animate:hover,
+  [role="button"]:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 0 8px 20px rgba(249, 115, 22, 0.15) !important;
+  }
+  button:not(:disabled):active,
+  .button-animate:active,
+  [role="button"]:active {
+    transform: translateY(-1px) !important;
+  }
+
+  /* Tabs Scaling & Soft Glow */
+  [role="tab"] {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.3s ease, box-shadow 0.3s ease, color 0.2s ease !important;
+    will-change: transform;
+  }
+  [role="tab"]:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 0 15px rgba(249, 115, 22, 0.25) !important;
+  }
+
+  /* Cards Floating & Expanded Shadows */
+  [class*="Card"],
+  [class*="rounded-3xl border"],
+  [class*="rounded-2xl border"] {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.3s ease !important;
+    will-change: transform;
+  }
+  [class*="Card"]:hover,
+  [class*="rounded-3xl border"]:hover,
+  [class*="rounded-2xl border"]:hover {
+    transform: translateY(-6px) !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+    border-color: rgba(249, 115, 22, 0.3) !important;
+  }
+
+  /* SVGs & Icons Rotational Offset */
+  svg.lucide,
+  .lucide,
+  .icon-animate {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease !important;
+  }
+  svg.lucide:hover,
+  .lucide:hover,
+  .icon-animate:hover {
+    transform: rotate(15deg) !important;
+  }
+  /* Parent Hover Trigger (Icons within buttons) */
+  button:hover svg.lucide,
+  button:hover .lucide {
+    transform: rotate(12deg) !important;
+  }
+}

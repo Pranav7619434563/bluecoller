@@ -52,17 +52,16 @@ Version 3: SEO (Keyword-rich, good for search ranking)
 
 Return ONLY as a JSON object with keys: "professional", "friendly", "seo". No other text.`
 
-      const response = await fetch("/api/ollama", {
+      const response = await fetch("/api/groq", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "llama3.2",
           prompt: prompt
         })
       })
 
       const data = await response.json()
-      const jsonStr = data.response.match(/\{[\s\S]*\}/)?.[0]
+      const jsonStr = data.response?.match(/\{[\s\S]*\}/)?.[0]
       if (jsonStr) {
         setBioOutputs(JSON.parse(jsonStr))
         toast.success("AI Bios generated!")
@@ -71,7 +70,7 @@ Return ONLY as a JSON object with keys: "professional", "friendly", "seo". No ot
       }
     } catch (error) {
       console.error(error)
-      toast.error("Ollama connection failed. Make sure Ollama is running with llama3.")
+      toast.error("Groq connection failed. Make sure your API key is correct.")
     } finally {
       setIsGeneratingBio(false)
     }
@@ -83,17 +82,16 @@ Return ONLY as a JSON object with keys: "professional", "friendly", "seo". No ot
       const prompt = `Given these current skills: ${currentSkills.join(", ")} for a ${category} worker, suggest 3-5 additional specific skills to add to this worker profile. 
 Return ONLY as a JSON array of strings. No other text.`
 
-      const response = await fetch("/api/ollama", {
+      const response = await fetch("/api/groq", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "llama3.2",
           prompt: prompt
         })
       })
 
       const data = await response.json()
-      const jsonStr = data.response.match(/\[[\s\S]*\]/)?.[0]
+      const jsonStr = data.response?.match(/\[[\s\S]*\]/)?.[0]
       if (jsonStr) {
         setSuggestedSkills(JSON.parse(jsonStr))
         toast.success("Skill suggestions updated!")
@@ -102,7 +100,7 @@ Return ONLY as a JSON array of strings. No other text.`
       }
     } catch (error) {
       console.error(error)
-      toast.error("Ollama connection failed.")
+      toast.error("Groq connection failed.")
     } finally {
       setIsSuggestingSkills(false)
     }
@@ -163,7 +161,7 @@ Return ONLY as a JSON array of strings. No other text.`
             </div>
           ) : (
             <div className="py-12 text-center bg-muted/10 rounded-2xl border-2 border-dashed border-muted text-muted-foreground italic">
-              Click "Generate Bios" to create AI-powered profiles using your local Ollama.
+              Click "Generate Bios" to create AI-powered profiles using Groq.
             </div>
           )}
         </CardContent>

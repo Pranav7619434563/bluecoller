@@ -49,6 +49,16 @@ export default function RegisterPage() {
       if (profileError) {
         toast.error("Failed to create profile: " + profileError.message)
       } else {
+        const userData = {
+          userId: authData.user.id,
+          fullName: fullName,
+          email: email,
+          phone: "",
+          city: "",
+          category: ""
+        }
+        localStorage.setItem("userData", JSON.stringify(userData))
+
         toast.success("Registration successful!")
         if (role === "worker") {
           router.push("/employee/dashboard")
